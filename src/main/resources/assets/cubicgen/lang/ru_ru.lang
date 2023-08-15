@@ -12,6 +12,7 @@ cubicgen.gui.cubicgen.next_page=Следующий
 cubicgen.gui.cubicgen.done=Готово
 cubicgen.gui.cubicgen.cancel=Отмена
 cubicgen.gui.cubicgen.presets=Наборы
+cubicgen.gui.cubicgen.fill_ores=Заполнить руды
 
 cubicgen.gui.cubicgen.basic_tab_title=Настройка параметров мира%nСтраница 1 из 4%nБазовые настройки (Отмеченные структуры * ещё не реализовано)
 cubicgen.gui.cubicgen.ores_tab_title=Настройка параметров мира%nСтраница 2 из 4%nНастройки руды

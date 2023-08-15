@@ -142,15 +142,25 @@ class OreSettingsTab {
 
     private final ArrayList<UIComponent<?>> componentList;
 
-    private final UIContainer<?> container;
+    private UIContainer<?> container;
     private final DoubleSupplier baseHeight;
     private final DoubleSupplier heightVariation;
+
+    protected final ExtraGui gui;
 
     OreSettingsTab(ExtraGui gui, JsonObjectView conf, DoubleSupplier baseHeight, DoubleSupplier heightVariation) {
         this.baseHeight = baseHeight;
         this.heightVariation = heightVariation;
+        this.gui = gui;
         this.componentList = new ArrayList<>();
-        UIList<UIComponent<?>, UIComponent<?>> layout = new UIList<>(gui, this.componentList, x -> x);
+        this.container = new UIList<UIComponent<?>,UIComponent<?>>(this.gui, this.componentList, x -> x);
+
+        draw(conf);
+    }
+
+     public void draw(JsonObjectView conf) {
+        
+        UIList<UIComponent<?>, UIComponent<?>> layout = new UIList<>(this.gui, this.componentList, x -> x);
         layout.setPadding(HORIZONTAL_PADDING, 0);
         layout.setSize(UIComponent.INHERITED, UIComponent.INHERITED);
 
@@ -158,17 +168,17 @@ class OreSettingsTab {
                 new Object() {
                     @Subscribe
                     public void onClick(UIButton.ClickEvent evt) {
-                        componentList.add(1, new UIOreOptionEntry(gui, JsonObjectView.of(DEFAULT_STANDARD_ORE.clone()), OreGenType.UNIFORM));
+                        componentList.add(1, new UIOreOptionEntry(OreSettingsTab.this.gui, JsonObjectView.of(DEFAULT_STANDARD_ORE.clone()), OreGenType.UNIFORM));
                     }
                 }
         ));
 
         for (JsonObjectView c : conf.objectArray("standardOres")) {
-            layout.add(new UIOreOptionEntry(gui, c, OreGenType.UNIFORM));
+            layout.add(new UIOreOptionEntry(this.gui, c, OreGenType.UNIFORM));
         }
 
         for (JsonObjectView c : conf.objectArray("periodicGaussianOres")) {
-            layout.add(new UIOreOptionEntry(gui, c, OreGenType.PERIODIC_GAUSSIAN));
+            layout.add(new UIOreOptionEntry(this.gui, c, OreGenType.PERIODIC_GAUSSIAN));
         }
         layout.setRightPadding(HORIZONTAL_PADDING + 6);
         this.container = layout;

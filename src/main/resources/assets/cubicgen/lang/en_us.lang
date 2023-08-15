@@ -12,6 +12,7 @@ cubicgen.gui.cubicgen.next_page=Next
 cubicgen.gui.cubicgen.done=Done
 cubicgen.gui.cubicgen.cancel=Cancel
 cubicgen.gui.cubicgen.presets=Presets
+cubicgen.gui.cubicgen.fill_ores=Populate ores
 
 cubicgen.gui.cubicgen.basic_tab_title=Customize World Settings%nPage 1 of 4%nBasic settings (Structures marked * not yet implemented)
 cubicgen.gui.cubicgen.ores_tab_title=Customize World Settings%nPage 2 of 4%nOre settings

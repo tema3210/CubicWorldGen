@@ -55,12 +55,19 @@ import net.malisis.core.client.gui.component.interaction.UIButton;
 import net.malisis.core.client.gui.component.interaction.UITextField;
 import net.malisis.core.client.gui.event.ComponentEvent;
 import net.malisis.core.renderer.font.FontOptions;
+import net.minecraft.block.Block;
 import net.minecraft.client.gui.GuiCreateWorld;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.NonNullList;
+import net.minecraftforge.oredict.OreDictionary;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -163,15 +170,6 @@ public class CustomCubicGui extends ExtraGui {
                 .add(next, UIBorderLayout.Border.RIGHT)
                 .add(label, UIBorderLayout.Border.CENTER);
 
-        UIButton done = new UIButton(this, malisisText("done")).setAutoSize(false).setSize(BTN_WIDTH, 20);
-        done.register(new Object() {
-            @Subscribe
-            public void onClick(UIButton.ClickEvent evt) {
-                CustomCubicGui.this.done();
-            }
-        });
-        done.setPosition(0, 0);
-
         UIButton sharePreset = new UIButton(this, malisisText("presets")).setAutoSize(false).setSize(BTN_WIDTH, 20);
         sharePreset.register(new Object() {
             @Subscribe
@@ -260,9 +258,27 @@ public class CustomCubicGui extends ExtraGui {
         });
         sharePreset.setPosition(BTN_WIDTH + 10, 0);
 
+        UIButton done = new UIButton(this, malisisText("done")).setAutoSize(false).setSize(BTN_WIDTH, 20);
+        done.register(new Object() {
+            @Subscribe
+            public void onClick(UIButton.ClickEvent evt) {
+                CustomCubicGui.this.done();
+            }
+        });
+        done.setPosition(0, 0);
+
+        UIButton populateBtn = new UIButton(this, malisisText("fill_ores")).setAutoSize(false).setSize(BTN_WIDTH, 20);
+        populateBtn.register(new Object() {
+            @Subscribe
+            public void onClick(UIButton.ClickEvent evt) {
+                CustomCubicGui.this.populateOresFromDict();
+            }
+        });
+        populateBtn.setPosition(BTN_WIDTH * 2 + 20, 0);
+
         UIContainer<?> container = new UIContainer<>(this);
-        container.add(done, sharePreset);
-        container.setSize(BTN_WIDTH * 2 + 10, 20);
+        container.add(done, sharePreset, populateBtn);
+        container.setSize(BTN_WIDTH * 3 + 20, 20);
 
         UIBorderLayout lowerLayout = new UIBorderLayout(this)
                 .setSize(xSize, ySize)
@@ -273,6 +289,59 @@ public class CustomCubicGui extends ExtraGui {
         tabGroup.add(upperLayout, lowerLayout);
 
         return tabGroup;
+    }
+
+    private final int SEA_LEVEL = 42;
+
+    private void populateOresFromDict() {
+       for (String oreName : OreDictionary.getOreNames()) {
+            if (!oreName.startsWith("ore")) continue;
+
+            NonNullList<ItemStack> oreStacks = OreDictionary.getOres(oreName);
+            int totalOres = oreStacks.size();
+
+            for (ItemStack oreStack : oreStacks) {
+                Item ore = oreStack.getItem();
+                
+                int tier = ore.getHarvestLevel(oreStack, "pickaxe", null, null) + 2;
+
+                double factor = ( 1 - 1 / (totalOres + 1) ) * tier;
+
+                Block block = Block.getBlockFromItem(ore);
+
+                if (block == Blocks.AIR) {
+                    continue;
+                }
+
+                String oreNameKey = block.getRegistryName().toString();
+
+                if (oreNameKey.startsWith("tile.")) {
+                    continue;
+                }
+
+                JsonObjectView toInsert = createJsonDesc(oreNameKey, 1 - 1 / factor, (int)Math.ceil(16 * factor), (int)Math.ceil(factor), tier );
+
+
+                JsonObjectView.of(this.jsonConf).objectArray("standardOres").addObject(toInsert);
+            }
+       }
+       oreSettings.draw(JsonObjectView.of(this.jsonConf));
+    }
+
+    JsonObjectView createJsonDesc(String name,double probability,int spawnSize, int spawnTries, int tier ) {
+        int maxHeight = SEA_LEVEL - tier * 11; 
+
+        return JsonObjectView.empty()
+            .put("blockstate", JsonObjectView.empty().put("Name", name))
+            .putNull("biomes")
+            .putNull("generateWhen")
+            .putNull("placeBlockWhen")
+            .put("spawnSize", spawnSize)
+            .put("spawnTries", spawnTries)
+            .put("spawnProbability", probability)
+            .put("minHeight", Double.NEGATIVE_INFINITY)
+            .put("maxHeight", (double) maxHeight / 192.0); // top of the generated world
+
     }
 
     private void done() {
