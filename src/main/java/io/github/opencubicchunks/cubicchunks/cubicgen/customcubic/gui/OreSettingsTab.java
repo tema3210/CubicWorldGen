@@ -47,10 +47,16 @@ import net.malisis.core.client.gui.component.interaction.UIButton;
 import net.malisis.core.client.gui.component.interaction.UICheckBox;
 import net.malisis.core.client.gui.component.interaction.UISelect;
 import net.malisis.core.client.gui.component.interaction.UISlider;
+import net.minecraft.block.Block;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.oredict.OreDictionary;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -147,31 +153,99 @@ class OreSettingsTab {
     private final DoubleSupplier heightVariation;
 
     protected final ExtraGui gui;
+    protected final JsonObjectView conf;
+
+    private boolean areOresLoaded = false;
+
+    public boolean AreOresLoaded() { return areOresLoaded; }
 
     OreSettingsTab(ExtraGui gui, JsonObjectView conf, DoubleSupplier baseHeight, DoubleSupplier heightVariation) {
         this.baseHeight = baseHeight;
         this.heightVariation = heightVariation;
         this.gui = gui;
         this.componentList = new ArrayList<>();
+        this.conf = conf;
+
+        this.componentList.add(0, getAddOreButton());
+
         this.container = new UIList<UIComponent<?>,UIComponent<?>>(this.gui, this.componentList, x -> x);
 
-        draw(conf);
+        this.populateOresFromDict();
+
+        draw();
     }
 
-     public void draw(JsonObjectView conf) {
-        
+    public void populateOresFromDict() {
+        if (areOresLoaded) return;
+        for (String oreName : OreDictionary.getOreNames()) {
+            if (!oreName.startsWith("ore")) continue;
+
+            NonNullList<ItemStack> oreStacks = OreDictionary.getOres(oreName);
+            int totalOres = oreStacks.size();
+
+            for (ItemStack oreStack : oreStacks) {
+                Item ore = oreStack.getItem();
+                
+                int tier = ore.getHarvestLevel(oreStack, "pickaxe", null, null) + 2;
+
+                double factor = ( 1 - 1 / (totalOres + 1) ) * tier;
+
+                Block block = Block.getBlockFromItem(ore);
+
+                if (block == Blocks.AIR) {
+                    continue;
+                }
+
+                String oreNameKey = block.getRegistryName().toString();
+
+                if (oreNameKey.startsWith("tile.")) {
+                    continue;
+                }
+
+                JsonObjectView toInsert = createJsonDesc(oreNameKey, 1 - 1 / factor, (int)Math.ceil(16 * factor), (int)Math.ceil(factor), tier );
+
+
+                this.conf.objectArray("standardOres").addObject(toInsert);
+            }
+       }
+       areOresLoaded = true;
+       this.draw();
+    }
+
+    private final int SEA_LEVEL = 63;
+
+    JsonObjectView createJsonDesc(String name,double probability,int spawnSize, int spawnTries, int tier ) {
+        int maxHeight = SEA_LEVEL - tier * 11; 
+
+        return JsonObjectView.empty()
+            .put("blockstate", JsonObjectView.empty().put("Name", name))
+            .putNull("biomes")
+            .putNull("generateWhen")
+            .putNull("placeBlockWhen")
+            .put("spawnSize", spawnSize)
+            .put("spawnTries", spawnTries)
+            .put("spawnProbability", probability)
+            .put("minHeight", Double.NEGATIVE_INFINITY)
+            .put("maxHeight", (double) maxHeight / 192.0); // top of the generated world
+    }
+
+    private UIButton getAddOreButton() {
+        UIButton addOreBtn = new UIButton(gui, malisisText("add_ore")).setAutoSize(false).setSize(UIComponent.INHERITED, 30).register(
+            new Object() {
+                @Subscribe
+                public void onClick(UIButton.ClickEvent evt) {
+                    componentList.add(1, new UIOreOptionEntry(OreSettingsTab.this.gui, JsonObjectView.of(DEFAULT_STANDARD_ORE.clone()), OreGenType.UNIFORM));
+                }
+            }
+        );
+
+        return addOreBtn;
+    }
+
+    public void draw() {
         UIList<UIComponent<?>, UIComponent<?>> layout = new UIList<>(this.gui, this.componentList, x -> x);
         layout.setPadding(HORIZONTAL_PADDING, 0);
         layout.setSize(UIComponent.INHERITED, UIComponent.INHERITED);
-
-        layout.add(new UIButton(gui, malisisText("add_ore")).setAutoSize(false).setSize(UIComponent.INHERITED, 30).register(
-                new Object() {
-                    @Subscribe
-                    public void onClick(UIButton.ClickEvent evt) {
-                        componentList.add(1, new UIOreOptionEntry(OreSettingsTab.this.gui, JsonObjectView.of(DEFAULT_STANDARD_ORE.clone()), OreGenType.UNIFORM));
-                    }
-                }
-        ));
 
         for (JsonObjectView c : conf.objectArray("standardOres")) {
             layout.add(new UIOreOptionEntry(this.gui, c, OreGenType.UNIFORM));

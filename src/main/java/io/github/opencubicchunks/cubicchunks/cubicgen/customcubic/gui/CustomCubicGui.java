@@ -271,7 +271,7 @@ public class CustomCubicGui extends ExtraGui {
         populateBtn.register(new Object() {
             @Subscribe
             public void onClick(UIButton.ClickEvent evt) {
-                CustomCubicGui.this.populateOresFromDict();
+                CustomCubicGui.this.oreSettings.populateOresFromDict();
             }
         });
         populateBtn.setPosition(BTN_WIDTH * 2 + 20, 0);
@@ -289,59 +289,6 @@ public class CustomCubicGui extends ExtraGui {
         tabGroup.add(upperLayout, lowerLayout);
 
         return tabGroup;
-    }
-
-    private final int SEA_LEVEL = 42;
-
-    private void populateOresFromDict() {
-       for (String oreName : OreDictionary.getOreNames()) {
-            if (!oreName.startsWith("ore")) continue;
-
-            NonNullList<ItemStack> oreStacks = OreDictionary.getOres(oreName);
-            int totalOres = oreStacks.size();
-
-            for (ItemStack oreStack : oreStacks) {
-                Item ore = oreStack.getItem();
-                
-                int tier = ore.getHarvestLevel(oreStack, "pickaxe", null, null) + 2;
-
-                double factor = ( 1 - 1 / (totalOres + 1) ) * tier;
-
-                Block block = Block.getBlockFromItem(ore);
-
-                if (block == Blocks.AIR) {
-                    continue;
-                }
-
-                String oreNameKey = block.getRegistryName().toString();
-
-                if (oreNameKey.startsWith("tile.")) {
-                    continue;
-                }
-
-                JsonObjectView toInsert = createJsonDesc(oreNameKey, 1 - 1 / factor, (int)Math.ceil(16 * factor), (int)Math.ceil(factor), tier );
-
-
-                JsonObjectView.of(this.jsonConf).objectArray("standardOres").addObject(toInsert);
-            }
-       }
-       oreSettings.draw(JsonObjectView.of(this.jsonConf));
-    }
-
-    JsonObjectView createJsonDesc(String name,double probability,int spawnSize, int spawnTries, int tier ) {
-        int maxHeight = SEA_LEVEL - tier * 11; 
-
-        return JsonObjectView.empty()
-            .put("blockstate", JsonObjectView.empty().put("Name", name))
-            .putNull("biomes")
-            .putNull("generateWhen")
-            .putNull("placeBlockWhen")
-            .put("spawnSize", spawnSize)
-            .put("spawnTries", spawnTries)
-            .put("spawnProbability", probability)
-            .put("minHeight", Double.NEGATIVE_INFINITY)
-            .put("maxHeight", (double) maxHeight / 192.0); // top of the generated world
-
     }
 
     private void done() {
